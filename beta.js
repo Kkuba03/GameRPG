@@ -3,7 +3,7 @@ const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
 
 canvas.width = innerWidth
-canvas.height = innerHeight
+canvas.height = innerHeight 
 
 //definiowanie postaci gracza
 class Player {
@@ -56,6 +56,7 @@ class Player {
         this.position.y += this.velocity.y 
     }
 }
+
 class Shot {
     constructor(x, y, targetX, targetY) {
         this.position = {
@@ -114,13 +115,7 @@ class Shot {
         // iterujemy przez wszystkie skały i sprawdzamy, czy strzał i skała mają ze sobą punkt wspólny
         for (let i = 0; i < rocks.length; i++) {
             const rock = rocks[i];
-            if (
-                this.position.x >= rock.position.x &&
-                this.position.x <= rock.position.x + rock.width &&
-                this.position.y >= rock.position.y &&
-                this.position.y <= rock.position.y + rock.height &&
-                this.active === true
-            ) {
+            if (touch(rock, this) && this.active === true) {
                 this.active = false;
                 return;
             }
@@ -278,15 +273,9 @@ const keys = {
         pressed: false
     }
 }
-
-function init(){
-    player = new Player()
-    worms = [new Worm({x: 750, y: 550}), new Worm({x: 400, y:200})]
-    woods = [new Rock({x: 800, y: 300 }), new Rock({x: 540, y: 210}),new Rock({x: 760, y:250}), new Rock({x: 100, y:25}),new Rock({x: 789, y:866}),new Rock({x: 99, y:259}), new Rock({x: 151, y:234}),new Rock({x: 523, y:510}),new Rock({x: 394, y:30}),new Rock({x: 939, y:1142}),new Rock({x: 163, y:652}),new Rock({x: 500, y:850}) ]
-}
-
 //tworzenie animacji postaci 
 function start(){
+    
     requestAnimationFrame(start)
     c.clearRect(0, 0, canvas.width, canvas.height)
     player.update() 
@@ -304,7 +293,7 @@ function start(){
   }
 
     //klatka, w której porusza się gracz
-    if (keys.right.pressed && player.position.x < 700) {
+    if (keys.right.pressed && player.position.x <= 700) {
         player.velocity.x = 5;
       } else if (keys.left.pressed && player.position.x >= 600) {
         player.velocity.x = -5;
@@ -314,7 +303,7 @@ function start(){
     
       if (keys.up.pressed && player.position.y >= 200) {
         player.velocity.y = -5;
-      } else if (keys.down.pressed && player.position.y <= 250) {
+      } else if (keys.down.pressed && player.position.y <= 300) {
         player.velocity.y = 5;
       } else {
         player.velocity.y = 0;
@@ -336,11 +325,24 @@ function start(){
           rock.velocity.y = 5;
         } else if (keys.down.pressed && player.velocity.y === 0) {
           rock.velocity.y = -5;
-        } else {
-          rock.velocity.y = 0;
-        }
+        }  else rock.velocity.y = 0
 
       }
+      for (let shot of shots) {
+        if (keys.right.pressed && player.velocity.x === 0) {
+          shot.position.x -= 5;
+        } else if (keys.left.pressed && player.velocity.x === 0) {
+          shot.position.x += 5;
+        } 
+
+    
+        if (keys.up.pressed && player.velocity.y === 0) {
+            shot.position.y += 5;
+        } else if (keys.down.pressed && player.velocity.y === 0) {
+            shot.position.y -= 5;
+        }
+      }
+
       for (let worm of worms) {
         if (keys.right.pressed && player.velocity.x === 0) {
           worm.velocity.x = -5;
@@ -357,7 +359,23 @@ function start(){
         } else {
           worm.velocity.y = 0;
         }
+        
+        if(player.position.x >= worm.position.x){
+            worm.position.x += 2
+        }if(player.position.x <= worm.position.x){
+            worm.position.x -= 2
+        }if(player.position.y >= worm.position.y){
+            worm.position.y += 2
+        }if(player.position.y <= worm.position.y){
+            worm.position.y -= 2
       }
+        if(touch(player, worm) && player.health > 0){
+            player.health -= 0.5
+            if(player.health === 0){
+                opening()
+            }
+        }
+    }
     
         // jeżeli spotkam na swojej drodze kamień, to się zatrzymuje:
         rocks.forEach(rock => {
@@ -470,6 +488,15 @@ function touchBottomBorder(a, b) {
         return true;
     }
     return false;
+}
+function touch(a,b) {
+    if(
+        a.position.x >= b.position.x &&
+        a.position.x <= b.position.x + b.width &&
+        a.position.y >= b.position.y &&
+        a.position.y <= b.position.y + b.height){
+        return true;
+    }return false;
 }
 //uruchomienie programu
 
