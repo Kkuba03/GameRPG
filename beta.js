@@ -5,6 +5,8 @@ const c = canvas.getContext('2d')
 canvas.width = innerWidth
 canvas.height = innerHeight 
 
+let money = 0
+let kills = 0
 //definiowanie postaci gracza
 class Player {
     constructor(){
@@ -47,6 +49,14 @@ class Player {
             this.healthBarWidth * (this.energy / 100),
             this.healthBarHeight
         );
+        //rysowanie napisu 
+        c.fillStyle = "red";
+        c.font = "bold 30px Arial";
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillText(`Kills: ${kills}`, 75, 40);
+        c.fillText(`Money: ${money}`, 80, 90);
+        
     }
     
     update(){
@@ -54,7 +64,45 @@ class Player {
         
         this.position.x += this.velocity.x
         this.position.y += this.velocity.y 
+        
+        if(player.energy < 100){
+            player.energy += 0.2
+        }
     }
+}
+class Shop {
+  constructor(){
+      this.position = {
+          x: 500,
+          y: 50,
+      }
+      this.velocity = {
+          x: 0,
+          y: 0
+      }
+      this.width = 200
+      this.height = 120     
+  }
+  
+  draw(){
+      // rysowanie sklepu
+      c.fillStyle = 'yellow'
+      c.fillRect(this.position.x, this.position.y, this.width, this.height);
+  
+      //rysowanie napisu 
+      c.fillStyle = "red";
+      c.font = "bold 30px Arial";
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.fillText('Shop', this.position.x + 100, this.position.y + 50);
+  }
+  
+  update(){
+      this.draw()
+      
+      this.position.x += this.velocity.x
+      this.position.y += this.velocity.y 
+  }
 }
 
 class Shot {
@@ -96,26 +144,21 @@ class Shot {
         // iterujemy przez wszystkie robaki i sprawdzamy, czy strzał i robak mają ze sobą punkt wspólny
         for (let i = 0; i < worms.length; i++) {
             const worm = worms[i];
-            if (
-                this.position.x >= worm.position.x &&
-                this.position.x <= worm.position.x + worm.width &&
-                this.position.y >= worm.position.y &&
-                this.position.y <= worm.position.y + worm.height &&
-                this.active === true
-            ) {
+            if (touch(this, worm) && this.active === true){
                 worm.healthBarWidth -= 20
                 this.active = false
                 if (worm.healthBarWidth <= 0) {
                     worms.splice(i, 1);
+                    money += 5 
+                    kills += 1
                 }
                 return;
             }
         }
-        
         // iterujemy przez wszystkie skały i sprawdzamy, czy strzał i skała mają ze sobą punkt wspólny
         for (let i = 0; i < rocks.length; i++) {
             const rock = rocks[i];
-            if (touch(rock, this) && this.active === true) {
+            if (touch(this, rock) && this.active === true) {
                 this.active = false;
                 return;
             }
@@ -129,7 +172,10 @@ canvas.addEventListener('click', (event) => {
         y: event.clientY
     }
     const shot = new Shot(player.position.x +20 , player.position.y + 40, mousePosition.x, mousePosition.y)
-    shots.push(shot)
+    if(player.energy >= 20){
+        shots.push(shot)
+        player.energy -= 20
+    }
 });
 //definiowanie robaka
 class Worm{
@@ -257,6 +303,7 @@ let player = new Player();
 let shots = [new Shot({x: player.position.x, y: player.position.y})]
 let worms = [new Worm({x: 750, y: 550}), new Worm({x: 400, y:200}), new Worm({x: 100, y:200}), new Worm({x: 400, y:600})]
 let rocks = [new Rock({x: 800, y: 300 }), new Rock({x: 540, y: 210}),new Rock({x: 760, y:250}), new Rock({x: 100, y:25}),new Rock({x: 789, y:866}),new Rock({x: 99, y:259}), new Rock({x: 151, y:234}),new Rock({x: 523, y:510}),new Rock({x: 394, y:30}),new Rock({x: 939, y:1142}),new Rock({x: 163, y:652}),new Rock({x: 500, y:850}) ]
+let shop = new Shop();
 let play = new Play();
 
 const keys = {
@@ -275,7 +322,6 @@ const keys = {
 }
 //tworzenie animacji postaci 
 function start(){
-    
     requestAnimationFrame(start)
     c.clearRect(0, 0, canvas.width, canvas.height)
     player.update() 
@@ -291,6 +337,7 @@ function start(){
   for (let rock of rocks) {
     rock.update();
   }
+  shop.update()
 
     //klatka, w której porusza się gracz
     if (keys.right.pressed && player.position.x <= 700) {
@@ -342,6 +389,19 @@ function start(){
             shot.position.y -= 5;
         }
       }
+      if (keys.right.pressed && player.velocity.x === 0) {
+        shop.velocity.x = -5;
+      } else if (keys.left.pressed && player.velocity.x === 0) {
+        shop.velocity.x = 5;
+      } else {
+        shop.velocity.x = 0;
+      }
+  
+      if (keys.up.pressed && player.velocity.y === 0) {
+        shop.velocity.y = 5;
+      } else if (keys.down.pressed && player.velocity.y === 0) {
+        shop.velocity.y = -5;
+      }  else shop.velocity.y = 0
 
       for (let worm of worms) {
         if (keys.right.pressed && player.velocity.x === 0) {
@@ -371,9 +431,6 @@ function start(){
       }
         if(touch(player, worm) && player.health > 0){
             player.health -= 0.5
-            if(player.health === 0){
-                opening()
-            }
         }
     }
     
@@ -388,6 +445,7 @@ function start(){
             worms.forEach(worm => {
                 worm.velocity.x = 0
             })
+            shop.velocity.x = 0
         }if(touchRightBorder(player, rock) && keys.right.pressed === false){
             player.velocity.x = 0
             rocks.forEach(rock => {
@@ -396,6 +454,7 @@ function start(){
             worms.forEach(worm => {
                 worm.velocity.x = 0
             })
+            shop.velocity.x = 0
         }if(touchUpperBorder(player, rock) && keys.up.pressed === false){
             player.velocity.y = 0
             rocks.forEach(rock => {
@@ -404,6 +463,7 @@ function start(){
             worms.forEach(worm => {
                 worm.velocity.y = 0
             })
+            shop.velocity.y = 0
         }else if(touchBottomBorder(player, rock) && keys.down.pressed === false){
             player.velocity.y = 0
             rocks.forEach(rock => {
@@ -412,6 +472,7 @@ function start(){
             worms.forEach(worm => {
                 worm.velocity.y = 0
             })
+            shop.velocity.y = 0
         }
     })
     
